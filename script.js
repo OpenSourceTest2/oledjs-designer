@@ -72,7 +72,19 @@ document.getElementById("uploadjs").addEventListener("change", function (e) {
 
 // Click handler for Download button--calculates byte codes for drawing
 document.getElementById("download").addEventListener("click", function (e) {
-    let pixels = document.querySelectorAll("div.pixel")
+    encodeBitmap();
+    let exportdata = "module.exports = [" + oledbytearray.toString() + "]"
+    let blob = new Blob([exportdata], { type: "text/plain;charset=utf-8" });
+    saveAs(blob, "oled-design.js.txt");
+});
+
+document.getElementById("sendBuffer").addEventListener("click", function (e) {
+  sendBitmapToMxChip();
+});
+
+
+function encodeBitmap() {
+   let pixels = document.querySelectorAll("div.pixel")
     for (i = 0; i < (pixels.length / 8); i++) {
         oledbytearray[i] = 0;
         if (pixels[i * 8 + 7].className == "pixel on") {
@@ -101,10 +113,7 @@ document.getElementById("download").addEventListener("click", function (e) {
         }
     }
     console.log(oledbytearray);
-    let exportdata = "module.exports = [" + oledbytearray.toString() + "]"
-    let blob = new Blob([exportdata], { type: "text/plain;charset=utf-8" });
-    saveAs(blob, "oled-design.js.txt");
-});
+};
 
 // Create OLED rows and pages (1x8-pixel groupings)
 function drawOLED(oledwidth, oledheight) {
@@ -133,4 +142,28 @@ function clearPixels() {
     for (i = 0; i < pixels.length; i++) {
         pixels[i].className = "pixel off";
     }
+}
+
+function sendBitmapToMxChip() {
+  encodeBitmap();
+
+  const fetchBody = JSON.stringify({
+    connectionString: document.getElementById('connectionString').value,
+    deviceId: document.getElementById('deviceId').value,
+    bitmap: oledbytearray
+  });
+
+  const fetchOptions = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: fetchBody
+  };
+  
+  // you can also host an azure function if you don't want to run it locally but this runs faster for a demo if it's local
+  fetch('http://localhost:7071/api/display-bitmap', fetchOptions)
+    .then((r) => console.log(r))
+    .catch((error) => console.log(error))
+
 }
